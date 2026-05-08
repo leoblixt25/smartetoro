@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EDA — eToro Dynamic Allocator</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;font-size:14px}
+.container{max-width:800px;margin:0 auto;padding:1.5rem}
+h1{font-size:1.5rem;margin-bottom:0.25rem}
+h2{font-size:1.1rem;margin:1rem 0 0.5rem;color:#94a3b8}
+.card{background:#1e293b;border-radius:8px;padding:1rem;margin:0.5rem 0}
+.row{display:flex;justify-content:space-between;align-items:center;padding:0.35rem 0}
+.row+.row{border-top:1px solid #334155}
+.label{color:#94a3b8}
+.badge{padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:600}
+.badge.online{background:#166534;color:#22c55e}
+.badge.offline{background:#7f1d1d;color:#ef4444}
+.badge.bullish{background:#166534;color:#22c55e}
+.badge.bearish{background:#7f1d1d;color:#ef4444}
+.badge.neutral{background:#374151;color:#94a3b8}
+table{width:100%;border-collapse:collapse;margin-top:0.5rem}
+th{text-align:left;color:#64748b;font-size:0.75rem;padding:0.4rem 0.5rem;border-bottom:1px solid #334155}
+td{padding:0.4rem 0.5rem;border-bottom:1px solid #1e293b}
+.green{color:#22c55e}
+.red{color:#ef4444}
+form{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}
+label{display:flex;flex-direction:column;gap:0.25rem;color:#94a3b8;font-size:0.8rem}
+input,select{background:#0f172a;border:1px solid #334155;border-radius:4px;padding:0.4rem 0.5rem;color:#e2e8f0;font-size:0.9rem}
+button{background:#3b82f6;color:#fff;border:none;border-radius:4px;padding:0.5rem 1rem;cursor:pointer;font-size:0.85rem;font-weight:600}
+button:hover{background:#2563eb}
+button:disabled{opacity:0.5;cursor:not-allowed}
+button.danger{background:#ef4444}
+button.danger:hover{background:#dc2626}
+.actions{display:flex;gap:0.5rem;margin-top:0.75rem}
+.small{font-size:0.75rem;color:#64748b}
+.mt{width:100%;margin-top:0.5rem}
+</style>
+</head>
+<body>
+<div class="container" id="app"></div>
+<script>
+const API = '';
+async function get(path){const r=await fetch(API+path);if(!r.ok)throw await r.text();return r.json()}
+async function post(path,body){const r=await fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw await r.text();return r.json()}
+
+function render(){
+  const app=document.getElementById('app');
+  Promise.all([get('/api/status'),get('/api/config'),get('/api/sentiment')]).then(([status,config,sentiment])=>{
+    app.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:start">
+        <div>
+          <h1>eToro Dynamic Allocator</h1>
+          <p class="small">Automated copy trading optimizer</p>
+        </div>
+        <span class="badge ${status.status==='ok'?'online':'offline'}">API ${status.status}</span>
+      </div>
+
+      <h2>Allocation</h2>
+      <div class="card">
+        ${status.allocator ? traderTable(status.allocator.activeTraders) : '<p class="small">No active allocations</p>'}
+        <div class="row" style="margin-top:0.5rem"><span class="label">Invested</span><span>$${status.allocator?.totalInvested?.toFixed(2)??'0.00'}</span></div>
+        <div class="row"><span class="label">Available Cash</span><span>$${status.allocator?.availableCash?.toFixed(2)??'0.00'}</span></div>
+        <div class="row"><span class="label">Last Rebalance</span><span class="small">${status.allocator?.lastRebalance??'—'}</span></div>
+      </div>
+
+      <h2>Market Sentiment</h2>
+      <div class="card">
+        <div class="row">
+          <span class="label">Sentiment</span>
+          <span class="badge ${sentiment.label}">${sentiment.label}</span>
+        </div>
+        <div class="row"><span class="label">Score</span><span>${sentiment.score.toFixed(2)}</span></div>
+        <div class="row"><span class="label">Articles</span><span>${sentiment.articlesAnalyzed}</span></div>
+      </div>
+
+      <h2>Configuration</h2>
+      <div class="card">
+        <form id="config-form">
+          <label>Traders <input name="traderCount" type="number" min="1" max="20" value="${config.traderCount}"></label>
+          <label>Take-Profit % <input name="tpPercent" type="number" min="0" max="100" value="${config.tpPercent}"></label>
+          <label>Stop-Loss % <input name="slPercent" type="number" min="0" max="100" value="${config.slPercent}"></label>
+          <label>Rebalance (hours) <input name="rebalanceHours" type="number" min="1" max="168" value="${config.rebalanceHours}"></label>
+        </form>
+        <div class="actions">
+          <button onclick="saveConfig()">Save Config</button>
+          <button class="danger" onclick="triggerRebalance()">Manual Rebalance</button>
+        </div>
+      </div>
+    `;
+  }).catch(e=>{
+    app.innerHTML=`<div class="card"><p style="color:#ef4444">Failed to load: ${e.message}</p></div>`;
+  });
+}
+
+function traderTable(traders){
+  if(!traders||traders.length===0)return'<p class="small">No active traders</p>';
+  return `<table>
+    <tr><th>Trader</th><th>Allocated</th><th>Value</th><th>P&L</th><th>Status</th></tr>
+    ${traders.map(t=>`<tr>
+      <td>${t.username}</td>
+      <td>$${t.allocatedUsd.toFixed(2)}</td>
+      <td>$${t.currentValue.toFixed(2)}</td>
+      <td class="${t.pnlPercent>=0?'green':'red'}">${t.pnlPercent>=0?'+':''}${t.pnlPercent.toFixed(1)}%</td>
+      <td><span class="badge ${t.status==='active'?'online':'offline'}">${t.status}</span></td>
+    </tr>`).join('')}
+  </table>`;
+}
+
+async function saveConfig(){
+  const form=document.getElementById('config-form');
+  const data=Object.fromEntries(new FormData(form));
+  data.traderCount=parseInt(data.traderCount);
+  data.tpPercent=parseFloat(data.tpPercent);
+  data.slPercent=parseFloat(data.slPercent);
+  data.rebalanceHours=parseInt(data.rebalanceHours);
+  await post('/api/config',data);
+  render();
+}
+
+async function triggerRebalance(){
+  await fetch('/api/rebalance',{method:'POST'});
+  setTimeout(render,2000);
+}
+
+render();
+</script>
+</body>
+</html>

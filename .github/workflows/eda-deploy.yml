@@ -1,0 +1,61 @@
+name: EDA Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'functions/**'
+      - 'workers/**'
+      - 'shared/**'
+      - 'public/**'
+      - 'package.json'
+      - 'wrangler.jsonc'
+  workflow_dispatch:
+
+jobs:
+  ci:
+    name: Typecheck & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test
+
+  deploy-pages:
+    name: Deploy Pages
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: pages deploy public
+
+  deploy-allocator:
+    name: Deploy Allocator Worker
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Deploy Allocator Cron Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: deploy --c workers/allocator/wrangler.jsonc
