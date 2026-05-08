@@ -1,7 +1,7 @@
 import { EtoroClient } from '../../shared/etoro-client';
 import { executeRebalance } from '../../shared/rebalancer';
 import { analyzeSentiment } from '../../shared/sentiment';
-import type { UserPrefs } from '../../shared/types';
+import type { UserPrefs, AllocatorState, AllocationPlan } from '../../shared/types';
 
 interface Env {
   EDA_CONFIG: KVNamespace;
@@ -41,7 +41,33 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     }
 
     const result = await executeRebalance(client, prefs, sentiment);
-    return Response.json(result);
+
+    const state: AllocatorState = {
+      activeTraders: result.allocations.map((a) => ({
+        username: a.username,
+        instrumentId: 0,
+        allocatedUsd: a.usdAmount,
+        currentValue: a.usdAmount,
+        pnlPercent: a.pnlPercent ?? 0,
+        status: 'active' as const,
+      })),
+      totalInvested: result.totalInvested,
+      availableCash: result.remainingCash,
+      lastRebalance: new Date().toISOString(),
+      nextRebalance: new Date(Date.now() + prefs.rebalanceHours * 3600000).toISOString(),
+    };
+
+    const plan: AllocationPlan = {
+      timestamp: new Date().toISOString(),
+      allocations: result.allocations,
+      reason: sentiment ? `manual rebalance (sentiment: ${sentiment.label})` : 'manual rebalance',
+    };
+
+    await context.env.EDA_CONFIG.put('state:current', JSON.stringify(state));
+    await context.env.EDA_CONFIG.put('state:last-plan', JSON.stringify(plan));
+    await context.env.EDA_CONFIG.put('state:last-actions', JSON.stringify(result.actions));
+
+    return Response.json({ ...result, stateSaved: true });
   } catch (err) {
     return Response.json({ error: err instanceof Error ? err.message : 'Rebalance failed' }, { status: 502 });
   }
