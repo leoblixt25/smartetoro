@@ -12,9 +12,5 @@
   ],
   "triggers": {
     "crons": ["0 */4 * * *"]
-  },
-  "vars": {
-    "ETORO_API_KEY": "",
-    "ETORO_USER_KEY": ""
   }
 }

@@ -8,9 +8,5 @@
       "binding": "EDA_CONFIG",
       "id": "6c7540b7b704419c81fc84994800a665"
     }
-  ],
-  "vars": {
-    "ETORO_API_KEY": "",
-    "ETORO_USER_KEY": ""
-  }
+  ]
 }
