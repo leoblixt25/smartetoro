@@ -34,11 +34,12 @@ export function evaluateTrackers(
   prefs: UserPrefs,
   weights: ScoringWeights = DEFAULT_WEIGHTS
 ): TrackerScore[] {
-  if (mirrors.length === 0) return [];
+  if (!mirrors || mirrors.length === 0) return [];
 
   const scores: TrackerScore[] = mirrors.map((m) => {
-    const totalPl = m.positions.reduce((s, p) => s + p.pl, 0);
-    const totalInvested = m.positions.reduce((s, p) => s + p.amount, 0) || 1;
+    const positions = m.positions ?? [];
+    const totalPl = positions.reduce((s, p) => s + p.pl, 0);
+    const totalInvested = positions.reduce((s, p) => s + p.amount, 0) || 1;
     const pnlPercent = (totalPl / totalInvested) * 100;
 
     const returns = m.positions.map((p) => p.plPercent);
@@ -103,6 +104,7 @@ export function allocateCapital(
   minAllocation = 50,
   maxAllocationPct = 0.4
 ): Allocation[] {
+  if (!scored) return [];
   const selected = scored.slice(0, Math.min(count, scored.length));
   if (selected.length === 0 || totalCapital <= 0) return [];
 

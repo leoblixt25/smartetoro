@@ -54,6 +54,7 @@ export async function executeRebalance(
 
 export function checkRiskTriggers(mirrors: Mirror[], prefs: UserPrefs): RiskTrigger[] {
   const triggers: RiskTrigger[] = [];
+  if (!mirrors) return triggers;
 
   for (const mirror of mirrors) {
     const mirrorPnl = calcMirrorPnl(mirror);
@@ -72,8 +73,9 @@ export function checkRiskTriggers(mirrors: Mirror[], prefs: UserPrefs): RiskTrig
 }
 
 function calcMirrorPnl(mirror: Mirror): number {
-  const totalPl = mirror.positions.reduce((s, p) => s + p.pl, 0);
-  const totalInvested = mirror.positions.reduce((s, p) => s + p.amount, 0) || 1;
+  const positions = mirror?.positions ?? [];
+  const totalPl = positions.reduce((s, p) => s + p.pl, 0);
+  const totalInvested = positions.reduce((s, p) => s + p.amount, 0) || 1;
   return (totalPl / totalInvested) * 100;
 }
 
@@ -84,8 +86,9 @@ export function computeActions(
   riskTriggers: RiskTrigger[] = []
 ): RebalanceAction[] {
   const actions: RebalanceAction[] = [];
-  const targetNames = new Set(allocations.map((a) => a.username));
-  const triggeredNames = new Set(riskTriggers.map((t) => t.username));
+  const targetNames = new Set(allocations?.map((a) => a.username) ?? []);
+  const triggeredNames = new Set(riskTriggers?.map((t) => t.username) ?? []);
+  if (!mirrors) return actions;
 
   for (const mirror of mirrors) {
     const name = `mirror-${mirror.mirrorID}`;

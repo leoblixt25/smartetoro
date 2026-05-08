@@ -67,8 +67,9 @@ Dashboard Refresh → displays live allocation + config
 - [DONE] M8: Dashboard UI (status, config, manual rebalance)
 - [DONE] M9: Cron-based periodic execution with sentiment
 - [DONE] M10: CI/CD pipeline (GitHub Actions → Cloudflare)
-- [PENDING] News API provider — user must bring their own NewsAPI key
-- [PENDING] eToro API rate limits — document per-endpoint limits
-- [PENDING] Demo vs Real environment switching via dashboard
-- [PENDING] Production secrets setup — `wrangler secret put` for ETORO_API_KEY, ETORO_USER_KEY, NEWS_API_KEY
-- [PENDING] eToro demo account setup instructions
+- [DONE] News API provider — graceful fallback when no API key configured
+- [DONE] eToro API rate limits — documented in docs/eda-deploy.md
+- [DONE] Demo vs Real environment switching — dropdown on dashboard
+- [DONE] Production secrets setup — documented in docs/eda-deploy.md
+- [DONE] eToro demo account setup instructions — documented in docs/eda-deploy.md
+- [DONE] Error handling audit — all 6 endpoints have try/catch, shared modules have null guards

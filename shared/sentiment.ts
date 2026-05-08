@@ -38,7 +38,7 @@ function computeLabel(avgScore: number): SentimentResult['label'] {
 }
 
 export function analyzeSentiment(headlines: string[]): SentimentResult {
-  if (headlines.length === 0) {
+  if (!headlines || headlines.length === 0) {
     return { score: 0, label: 'neutral', articlesAnalyzed: 0, timestamp: new Date().toISOString() };
   }
 

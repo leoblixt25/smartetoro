@@ -82,6 +82,10 @@ function render(){
           <label>Take-Profit % <input name="tpPercent" type="number" min="0" max="100" value="${config.tpPercent}"></label>
           <label>Stop-Loss % <input name="slPercent" type="number" min="0" max="100" value="${config.slPercent}"></label>
           <label>Rebalance (hours) <input name="rebalanceHours" type="number" min="1" max="168" value="${config.rebalanceHours}"></label>
+          <label>Environment <select name="environment">
+            <option value="demo" ${config.environment==='demo'?'selected':''}>Demo</option>
+            <option value="real" ${config.environment==='real'?'selected':''}>Real</option>
+          </select></label>
         </form>
         <div class="actions">
           <button onclick="saveConfig()">Save Config</button>
