@@ -90,6 +90,7 @@ function render(){
         <div class="actions">
           <button onclick="saveConfig()">Save Config</button>
           <button class="danger" onclick="triggerRebalance()">Manual Rebalance</button>
+          <span id="msg" class="small" style="padding:0.5rem"></span>
         </div>
       </div>
     `;
@@ -112,20 +113,34 @@ function traderTable(traders){
   </table>`;
 }
 
+function msg(text, ok=true){
+  const el=document.getElementById('msg');
+  if(el){el.textContent=text;el.style.color=ok?'#22c55e':'#ef4444';setTimeout(()=>el.textContent='',4000)}
+}
+
 async function saveConfig(){
-  const form=document.getElementById('config-form');
-  const data=Object.fromEntries(new FormData(form));
-  data.traderCount=parseInt(data.traderCount);
-  data.tpPercent=parseFloat(data.tpPercent);
-  data.slPercent=parseFloat(data.slPercent);
-  data.rebalanceHours=parseInt(data.rebalanceHours);
-  await post('/api/config',data);
-  render();
+  try {
+    const form=document.getElementById('config-form');
+    const data=Object.fromEntries(new FormData(form));
+    data.traderCount=parseInt(data.traderCount);
+    data.tpPercent=parseFloat(data.tpPercent);
+    data.slPercent=parseFloat(data.slPercent);
+    data.rebalanceHours=parseInt(data.rebalanceHours);
+    await post('/api/config',data);
+    msg('Config saved');
+    render();
+  } catch(e){msg('Save failed: '+(e.message||e),false)}
 }
 
 async function triggerRebalance(){
-  await fetch('/api/rebalance',{method:'POST'});
-  setTimeout(render,2000);
+  try {
+    msg('Rebalancing...');
+    const r=await fetch('/api/rebalance',{method:'POST'});
+    const data=await r.json();
+    if(data.error)throw new Error(data.error);
+    msg('Rebalance complete: '+data.allocations.length+' traders');
+    setTimeout(render,2000);
+  } catch(e){msg('Rebalance failed: '+(e.message||e),false)}
 }
 
 render();
