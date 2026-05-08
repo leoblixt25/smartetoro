@@ -49,14 +49,14 @@ export class EtoroClient {
 
   async searchTraders(query: string): Promise<TraderProfile[]> {
     const raw = await this.request<{ users: TraderProfile[] }>(
-      `/user-info/people?q=${encodeURIComponent(query)}`
+      `/user-info/people/search?period=LastTwoYears&pageSize=20&sort=GainScore&popularInvestor=true&freeText=${encodeURIComponent(query)}`
     );
     return raw.users ?? [];
   }
 
   async searchInstruments(query: string): Promise<Instrument[]> {
     const raw = await this.request<{ instruments: Instrument[] }>(
-      `/market-data/search?q=${encodeURIComponent(query)}`
+      `/market-data/search?internalSymbolFull=${encodeURIComponent(query)}&fields=instrumentId,internalSymbolFull,displayname,exchange,instrumentTypeID`
     );
     return raw.instruments ?? [];
   }
@@ -66,33 +66,33 @@ export class EtoroClient {
     instrumentId: number,
     amount: number,
     isBuy: boolean,
-    opts?: { takeProfitRate?: number; stopLossRate?: number }
+    opts?: { leverage?: number; takeProfitRate?: number; stopLossRate?: number }
   ): Promise<OrderResult> {
+    const body: Record<string, unknown> = {
+      InstrumentID: instrumentId,
+      Amount: amount,
+      IsBuy: isBuy,
+      Leverage: opts?.leverage ?? 1,
+    };
+    if (opts?.takeProfitRate) body.TakeProfitRate = opts.takeProfitRate;
+    if (opts?.stopLossRate) body.StopLossRate = opts.stopLossRate;
     return this.request<OrderResult>(
       `/trading/execution/${environment}/market-open-orders/by-amount`,
-      {
-        method: 'POST',
-        body: {
-          InstrumentID: instrumentId,
-          Amount: amount,
-          IsBuy: isBuy,
-          TakeProfitRate: opts?.takeProfitRate ?? 0,
-          StopLossRate: opts?.stopLossRate ?? 0,
-        },
-      }
+      { method: 'POST', body }
     );
   }
 
   async closePosition(
     environment: 'demo' | 'real',
     positionId: number,
+    instrumentId: number,
     unitsToDeduct?: number
   ): Promise<{ token: string }> {
     return this.request<{ token: string }>(
       `/trading/execution/${environment}/market-close-orders/positions/${positionId}`,
       {
         method: 'POST',
-        body: unitsToDeduct ? { UnitsToDeduct: unitsToDeduct } : {},
+        body: { InstrumentId: instrumentId, ...(unitsToDeduct ? { UnitsToDeduct: unitsToDeduct } : {}) },
       }
     );
   }
