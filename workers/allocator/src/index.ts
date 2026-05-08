@@ -65,13 +65,13 @@ export default {
         activeTraders: result.allocations.map((a) => ({
           username: a.username,
           instrumentId: 0,
-          allocatedUsd: a.usdAmount,
-          currentValue: a.usdAmount,
-          pnlPercent: a.pnlPercent,
+          allocatedUsd: a.usdAmount || 0,
+          currentValue: a.usdAmount || 0,
+          pnlPercent: a.pnlPercent || 0,
           status: 'active' as const,
         })),
-        totalInvested: result.totalInvested,
-        availableCash: result.remainingCash,
+        totalInvested: result.totalInvested || 0,
+        availableCash: result.remainingCash || 0,
         lastRebalance: new Date().toISOString(),
         nextRebalance: new Date(Date.now() + prefs.rebalanceHours * 3600000).toISOString(),
       };

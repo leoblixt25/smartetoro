@@ -105,10 +105,10 @@ function traderTable(traders){
     <tr><th>Trader</th><th>Allocated</th><th>Value</th><th>P&L</th><th>Status</th></tr>
     ${traders.map(t=>`<tr>
       <td>${t.username}</td>
-      <td>$${t.allocatedUsd.toFixed(2)}</td>
-      <td>$${t.currentValue.toFixed(2)}</td>
-      <td class="${t.pnlPercent>=0?'green':'red'}">${t.pnlPercent>=0?'+':''}${t.pnlPercent.toFixed(1)}%</td>
-      <td><span class="badge ${t.status==='active'?'online':'offline'}">${t.status}</span></td>
+      <td>$${(t.allocatedUsd||0).toFixed(2)}</td>
+      <td>$${(t.currentValue||0).toFixed(2)}</td>
+      <td class="${(t.pnlPercent||0)>=0?'green':'red'}">${(t.pnlPercent||0)>=0?'+':''}${(t.pnlPercent||0).toFixed(1)}%</td>
+      <td><span class="badge ${t.status==='active'?'online':'offline'}">${t.status||'unknown'}</span></td>
     </tr>`).join('')}
   </table>`;
 }

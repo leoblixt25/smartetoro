@@ -38,11 +38,11 @@ export function evaluateTrackers(
 
   const scores: TrackerScore[] = mirrors.map((m) => {
     const positions = m.positions ?? [];
-    const totalPl = positions.reduce((s, p) => s + p.pl, 0);
-    const totalInvested = positions.reduce((s, p) => s + p.amount, 0) || 1;
+    const totalPl = positions.reduce((s, p) => s + (p.pl || 0), 0);
+    const totalInvested = positions.reduce((s, p) => s + (p.amount || 0), 0) || 1;
     const pnlPercent = (totalPl / totalInvested) * 100;
 
-    const returns = m.positions.map((p) => p.plPercent);
+    const returns = positions.map((p) => p.plPercent || 0);
     const mean = returns.reduce((s, v) => s + v, 0) / returns.length || 0;
     const variance = returns.reduce((s, v) => s + (v - mean) ** 2, 0) / returns.length || 0;
     const stdDev = Math.sqrt(variance);
