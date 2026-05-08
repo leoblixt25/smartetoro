@@ -1,5 +1,5 @@
 import { EtoroClient } from '../../shared/etoro-client';
-import { executeRebalance } from '../../shared/rebalancer';
+import { executeRebalance, buildCloseQueue } from '../../shared/rebalancer';
 import { analyzeSentiment } from '../../shared/sentiment';
 import type { UserPrefs, AllocatorState, AllocationPlan } from '../../shared/types';
 
@@ -63,11 +63,14 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       reason: sentiment ? `manual rebalance (sentiment: ${sentiment.label})` : 'manual rebalance',
     };
 
+    const closeQueue = buildCloseQueue(result.portfolio.clientPortfolio.mirrors, result.allocations, result.riskTriggers);
+    await context.env.EDA_CONFIG.put('state:close-queue', JSON.stringify(closeQueue));
     await context.env.EDA_CONFIG.put('state:current', JSON.stringify(state));
     await context.env.EDA_CONFIG.put('state:last-plan', JSON.stringify(plan));
     await context.env.EDA_CONFIG.put('state:last-actions', JSON.stringify(result.actions));
 
-    return Response.json({ ...result, stateSaved: true });
+    const { portfolio: _p, ...safeResult } = result;
+    return Response.json({ ...safeResult, stateSaved: true });
   } catch (err) {
     return Response.json({ error: err instanceof Error ? err.message : 'Rebalance failed' }, { status: 502 });
   }

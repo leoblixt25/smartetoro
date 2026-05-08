@@ -1,4 +1,5 @@
 export interface Position {
+  positionId: number;
   instrumentId: number;
   symbol: string;
   openRate: number;
@@ -17,6 +18,7 @@ export interface MirrorPosition {
   units: number;
   pl: number;
   plPercent: number;
+  positionId?: number;
 }
 
 export interface Mirror {

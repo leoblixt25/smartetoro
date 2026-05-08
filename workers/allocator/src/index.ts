@@ -1,13 +1,20 @@
 import { EtoroClient } from '../../../shared/etoro-client';
-import { executeRebalance } from '../../../shared/rebalancer';
+import { executeRebalance, buildCloseQueue } from '../../../shared/rebalancer';
 import { analyzeSentiment, type SentimentResult } from '../../../shared/sentiment';
 import type { UserPrefs, AllocatorState, AllocationPlan } from '../../../shared/types';
+import type { PortfolioResponse } from '../../../shared/etoro-types';
 
 interface Env {
   EDA_CONFIG: KVNamespace;
   ETORO_API_KEY: string;
   ETORO_USER_KEY: string;
   NEWS_API_KEY: string;
+}
+
+interface ExecutionResult {
+  closed: { mirrorId: number; reason: string; positions: number }[];
+  errors: { mirrorId: number; reason: string; error: string }[];
+  timestamp: string;
 }
 
 async function fetchSentiment(env: Env): Promise<SentimentResult | undefined> {
@@ -26,6 +33,45 @@ async function fetchSentiment(env: Env): Promise<SentimentResult | undefined> {
   } catch {
     return undefined;
   }
+}
+
+async function executeCloses(
+  client: EtoroClient,
+  env: Env,
+  portfolio: PortfolioResponse,
+  prefs: UserPrefs
+): Promise<ExecutionResult> {
+  const result: ExecutionResult = { closed: [], errors: [], timestamp: new Date().toISOString() };
+  const posByInst = new Map<number, number>();
+  for (const p of portfolio.clientPortfolio.positions) {
+    posByInst.set(p.instrumentId, p.positionId);
+  }
+
+  const queueRaw = await env.EDA_CONFIG.get('state:close-queue', 'text');
+  if (!queueRaw) return result;
+  const queue = JSON.parse(queueRaw) as { mirrorId: number; reason: string }[];
+
+  for (const item of queue) {
+    const mirror = portfolio.clientPortfolio.mirrors.find(m => m.mirrorID === item.mirrorId);
+    if (!mirror) continue;
+
+    let closed = 0;
+    for (const mp of mirror.positions) {
+      const pid = mp.positionId ?? posByInst.get(mp.instrumentId);
+      if (!pid) continue;
+      try {
+        await client.closePosition(prefs.environment, pid, mp.instrumentId);
+        closed++;
+      } catch (e) {
+        result.errors.push({ mirrorId: item.mirrorId, reason: item.reason, error: String(e) });
+      }
+    }
+    if (closed > 0) {
+      result.closed.push({ mirrorId: item.mirrorId, reason: item.reason, positions: closed });
+    }
+  }
+
+  return result;
 }
 
 export default {
@@ -53,7 +99,14 @@ export default {
       const sentiment = await fetchSentiment(env);
       if (sentiment) console.log(`[Allocator] Sentiment: ${sentiment.label} (${sentiment.score.toFixed(2)})`);
 
-      const result = await executeRebalance(client, prefs, sentiment);
+      const portfolio = await client.getPortfolio(prefs.environment);
+      const result = await executeRebalance(client, prefs, sentiment, portfolio);
+
+      const closeQueue = buildCloseQueue(portfolio.clientPortfolio.mirrors, result.allocations, result.riskTriggers);
+      await env.EDA_CONFIG.put('state:close-queue', JSON.stringify(closeQueue));
+
+      // Execute closes
+      const execResult = await executeCloses(client, env, portfolio, prefs);
 
       const plan: AllocationPlan = {
         timestamp: new Date().toISOString(),
@@ -79,8 +132,9 @@ export default {
       await env.EDA_CONFIG.put('state:current', JSON.stringify(state));
       await env.EDA_CONFIG.put('state:last-plan', JSON.stringify(plan));
       await env.EDA_CONFIG.put('state:last-actions', JSON.stringify(result.actions));
+      await env.EDA_CONFIG.put('state:execution', JSON.stringify(execResult));
 
-      console.log(`[Allocator] Cycle complete — ${result.allocations.length} traders, ${result.actions.filter(a => a.type === 'open').length} new, ${result.actions.filter(a => a.type === 'close').length} closed`);
+      console.log(`[Allocator] Cycle complete — ${result.allocations.length} traders, ${closeQueue.length} positions to close, ${execResult.closed.length} closed, ${execResult.errors.length} errors`);
     } catch (err) {
       console.error('[Allocator] Error:', err);
     }

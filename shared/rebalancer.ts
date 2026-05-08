@@ -1,7 +1,7 @@
 import { EtoroClient } from './etoro-client';
 import { evaluateTrackers, allocateCapital, type Allocation } from './scorer';
 import type { UserPrefs } from './types';
-import type { Mirror } from './etoro-types';
+import type { Mirror, PortfolioResponse } from './etoro-types';
 import type { SentimentResult } from './sentiment';
 import { capitalMultiplier } from './sentiment';
 
@@ -11,6 +11,7 @@ export interface RebalanceResult {
   riskTriggers: RiskTrigger[];
   totalInvested: number;
   remainingCash: number;
+  portfolio: PortfolioResponse;
 }
 
 export interface RebalanceAction {
@@ -27,12 +28,19 @@ export interface RiskTrigger {
   threshold: number;
 }
 
+export interface CloseInstruction {
+  mirrorId: number;
+  reason: 'tp' | 'sl' | 'removed';
+  pnlPercent: number;
+}
+
 export async function executeRebalance(
   client: EtoroClient,
   prefs: UserPrefs,
-  sentiment?: SentimentResult
+  sentiment?: SentimentResult,
+  existingPortfolio?: PortfolioResponse
 ): Promise<RebalanceResult> {
-  const portfolio = await client.getPortfolio(prefs.environment);
+  const portfolio = existingPortfolio ?? await client.getPortfolio(prefs.environment);
   const mirrors = portfolio.clientPortfolio.mirrors;
   const availableCash = portfolio.clientPortfolio.credit;
 
@@ -49,7 +57,29 @@ export async function executeRebalance(
   const allocations = allocateCapital(scored, prefs.traderCount, totalCapital);
 
   const actions = computeActions(mirrors, allocations, prefs, riskTriggers);
-  return { allocations, actions, riskTriggers, totalInvested, remainingCash: totalCapital - totalInvested };
+  const closeQueue = buildCloseQueue(mirrors, allocations, riskTriggers);
+  return { allocations, actions, riskTriggers, totalInvested, remainingCash: totalCapital - totalInvested, portfolio };
+}
+
+export function buildCloseQueue(
+  mirrors: Mirror[],
+  allocations: Allocation[],
+  riskTriggers: RiskTrigger[] = []
+): CloseInstruction[] {
+  const queue: CloseInstruction[] = [];
+  const targetNames = new Set(allocations?.map((a) => a.username) ?? []);
+  const triggeredNames = new Set(riskTriggers?.map((t) => t.username) ?? []);
+
+  for (const mirror of mirrors) {
+    const name = `mirror-${mirror.mirrorID}`;
+    if (triggeredNames.has(name)) {
+      const trigger = riskTriggers.find(t => t.username === name);
+      queue.push({ mirrorId: mirror.mirrorID, reason: trigger!.type, pnlPercent: trigger!.pnlPercent });
+    } else if (!targetNames.has(name)) {
+      queue.push({ mirrorId: mirror.mirrorID, reason: 'removed', pnlPercent: calcMirrorPnl(mirror) });
+    }
+  }
+  return queue;
 }
 
 export function checkRiskTriggers(mirrors: Mirror[], prefs: UserPrefs): RiskTrigger[] {
