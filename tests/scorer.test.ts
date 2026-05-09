@@ -10,7 +10,7 @@ const mockMirrors: Mirror[] = [
     stopLossPercentage: 10,
     stopLossAmount: 500,
     initialInvestment: 1000,
-    availableAmount: 1080,
+    availableAmount: 80,
     isPaused: false,
     positions: [
       { instrumentId: 1, symbol: 'AAPL', amount: 500, units: 10, pl: 50, plPercent: 10 },
@@ -24,7 +24,7 @@ const mockMirrors: Mirror[] = [
     stopLossPercentage: 5,
     stopLossAmount: 800,
     initialInvestment: 2000,
-    availableAmount: 2200,
+    availableAmount: 300,
     isPaused: false,
     positions: [
       { instrumentId: 3, symbol: 'TSLA', amount: 1000, units: 20, pl: -100, plPercent: -10 },
@@ -52,7 +52,7 @@ describe('evaluateTrackers', () => {
     const result = evaluateTrackers(mockMirrors, defaultPrefs);
     const mirror0 = result.find((m) => m.mirrorId === 1);
     expect(mirror0).toBeDefined();
-    expect(mirror0!.pnlPercent).toBeCloseTo(8, 0);
+    expect(mirror0!.pnlPercent).toBeCloseTo(16, 0);
   });
 
   it('returns empty array for no mirrors', () => {

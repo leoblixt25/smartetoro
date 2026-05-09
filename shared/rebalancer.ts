@@ -47,8 +47,10 @@ export async function executeRebalance(
   const availableCash = portfolio.clientPortfolio.credit;
 
   const totalInvested = mirrors.reduce((s, m) => s + calcMirrorInvested(m), 0);
-  const currentPortfolioValue = mirrors.reduce((s, m) => s + calcMirrorCurrentValue(m), 0);
-  const rawCapital = currentPortfolioValue + availableCash;
+  const regularPositionsValue = portfolio.clientPortfolio.positions.reduce((s, p) => s + (p.amount || 0) + (p.pl || 0), 0);
+  const mirrorValues = mirrors.reduce((s, m) => s + calcMirrorCurrentValue(m), 0);
+  const currentPortfolioValue = mirrorValues + regularPositionsValue + availableCash;
+  const rawCapital = currentPortfolioValue;
   const multiplier = sentiment ? capitalMultiplier(sentiment) : 1.0;
   const totalCapital = Math.floor(rawCapital * multiplier * 100) / 100;
 
@@ -59,7 +61,8 @@ export async function executeRebalance(
   const actions = computeActions(mirrors, allocations, prefs, riskTriggers);
   const closeQueue = buildCloseQueue(mirrors, allocations, riskTriggers);
   const totalPnlPercent = totalInvested > 0 ? ((currentPortfolioValue - totalInvested) / totalInvested) * 100 : 0;
-  return { allocations, actions, riskTriggers, totalInvested, currentPortfolioValue, remainingCash: availableCash, totalPnlPercent, portfolio };
+  const remainingCash = availableCash;
+  return { allocations, actions, riskTriggers, totalInvested, currentPortfolioValue, remainingCash, totalPnlPercent, portfolio };
 }
 
 export function buildCloseQueue(
@@ -104,18 +107,18 @@ export function checkRiskTriggers(mirrors: Mirror[], prefs: UserPrefs): RiskTrig
 }
 
 export function calcMirrorPnl(mirror: Mirror): number {
-  const positions = mirror?.positions ?? [];
-  const totalAmount = positions.reduce((s, p) => s + (p.amount || 0), 0);
-  const totalPl = positions.reduce((s, p) => s + (p.pl || 0), 0);
-  if (totalAmount <= 0) return 0;
-  return (totalPl / totalAmount) * 100;
+  const invested = mirror?.initialInvestment || 0;
+  if (invested <= 0) return 0;
+  const totalEquity = calcMirrorCurrentValue(mirror);
+  return ((totalEquity - invested) / invested) * 100;
 }
 
 export function calcMirrorCurrentValue(mirror: Mirror): number {
   const positions = mirror?.positions ?? [];
   const totalAmount = positions.reduce((s, p) => s + (p.amount || 0), 0);
   const totalPl = positions.reduce((s, p) => s + (p.pl || 0), 0);
-  return totalAmount + totalPl;
+  const cashPortion = mirror?.availableAmount || 0;
+  return cashPortion + totalAmount + totalPl;
 }
 
 export function calcMirrorInvested(mirror: Mirror): number {

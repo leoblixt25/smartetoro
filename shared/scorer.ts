@@ -40,8 +40,10 @@ export function evaluateTrackers(
     const positions = m.positions ?? [];
     const totalAmount = positions.reduce((s, p) => s + (p.amount || 0), 0);
     const totalPl = positions.reduce((s, p) => s + (p.pl || 0), 0);
-    const currentVal = totalAmount + totalPl;
-    const pnlPercent = totalAmount > 0 ? (totalPl / totalAmount) * 100 : 0;
+    const cashPortion = m.availableAmount || 0;
+    const currentVal = cashPortion + totalAmount + totalPl;
+    const invested = m.initialInvestment || 0;
+    const pnlPercent = invested > 0 ? ((currentVal - invested) / invested) * 100 : 0;
 
     const returns = positions.map((p) => p.plPercent || 0);
     const mean = returns.reduce((s, v) => s + v, 0) / returns.length || 0;
