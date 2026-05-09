@@ -7,13 +7,13 @@ const mockMirrors: Mirror[] = [
   {
     mirrorID: 1, cid: 100, parentCID: 200,
     stopLossPercentage: 10, stopLossAmount: 500,
-    initialInvestment: 1000, availableAmount: 200, isPaused: false,
+    initialInvestment: 1000, availableAmount: 1150, isPaused: false,
     positions: [{ instrumentId: 1, symbol: 'AAPL', amount: 500, units: 10, pl: 50, plPercent: 10 }],
   },
   {
     mirrorID: 2, cid: 101, parentCID: 201,
     stopLossPercentage: 5, stopLossAmount: 800,
-    initialInvestment: 2000, availableAmount: 500, isPaused: false,
+    initialInvestment: 2000, availableAmount: 1300, isPaused: false,
     positions: [
       { instrumentId: 3, symbol: 'TSLA', amount: 1000, units: 20, pl: -300, plPercent: -30 },
       { instrumentId: 4, symbol: 'MSFT', amount: 500, units: 8, pl: -100, plPercent: -20 },
@@ -22,7 +22,7 @@ const mockMirrors: Mirror[] = [
   {
     mirrorID: 3, cid: 102, parentCID: 202,
     stopLossPercentage: 8, stopLossAmount: 300,
-    initialInvestment: 500, availableAmount: 100, isPaused: false,
+    initialInvestment: 500, availableAmount: 650, isPaused: false,
     positions: [{ instrumentId: 5, symbol: 'AAPL', amount: 300, units: 5, pl: 90, plPercent: 30 }],
   },
 ];

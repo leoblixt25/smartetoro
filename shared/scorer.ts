@@ -38,9 +38,9 @@ export function evaluateTrackers(
 
   const scores: TrackerScore[] = mirrors.map((m) => {
     const positions = m.positions ?? [];
-    const totalPl = positions.reduce((s, p) => s + (p.pl || 0), 0);
-    const totalInvested = positions.reduce((s, p) => s + (p.amount || 0), 0) || 1;
-    const pnlPercent = (totalPl / totalInvested) * 100;
+    const initialInv = m.initialInvestment || 0;
+    const currentVal = m.availableAmount || 0;
+    const pnlPercent = initialInv > 0 ? ((currentVal - initialInv) / initialInv) * 100 : 0;
 
     const returns = positions.map((p) => p.plPercent || 0);
     const mean = returns.reduce((s, v) => s + v, 0) / returns.length || 0;
@@ -55,8 +55,8 @@ export function evaluateTrackers(
     return {
       username: `mirror-${m.mirrorID}`,
       mirrorId: m.mirrorID,
-      allocatedUsd: totalInvested,
-      currentValue: totalInvested + totalPl,
+      allocatedUsd: initialInv,
+      currentValue: currentVal,
       pnlPercent,
       consistencyScore,
       riskScore,

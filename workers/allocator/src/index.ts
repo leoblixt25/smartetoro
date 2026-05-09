@@ -114,17 +114,26 @@ export default {
         reason: sentiment ? `scheduled rebalance (sentiment: ${sentiment.label})` : 'scheduled rebalance',
       };
 
+      const currency = prefs.currency || 'EUR';
       const state: AllocatorState = {
-        activeTraders: result.allocations.map((a) => ({
-          username: a.username,
-          instrumentId: 0,
-          allocatedUsd: a.usdAmount || 0,
-          currentValue: a.usdAmount || 0,
-          pnlPercent: a.pnlPercent || 0,
-          status: 'active' as const,
-        })),
+        activeTraders: result.allocations.map((a) => {
+          const mirrorId = parseInt(a.username.replace('mirror-', ''), 10);
+          const mirror = portfolio.clientPortfolio.mirrors.find((m) => m.mirrorID === mirrorId);
+          return {
+            username: a.username,
+            traderName: a.username,
+            instrumentId: 0,
+            allocated: a.usdAmount || 0,
+            currentValue: mirror?.availableAmount || 0,
+            pnlPercent: mirror && mirror.initialInvestment > 0 ? ((mirror.availableAmount - mirror.initialInvestment) / mirror.initialInvestment) * 100 : 0,
+            status: 'active' as const,
+          };
+        }),
         totalInvested: result.totalInvested || 0,
+        currentPortfolioValue: result.currentPortfolioValue || 0,
         availableCash: result.remainingCash || 0,
+        totalPnlPercent: result.totalPnlPercent || 0,
+        currency,
         lastRebalance: new Date().toISOString(),
         nextRebalance: new Date(Date.now() + prefs.rebalanceHours * 3600000).toISOString(),
       };

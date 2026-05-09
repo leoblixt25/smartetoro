@@ -82,6 +82,14 @@ export class EtoroClient {
     );
   }
 
+  async lookupUsers(cids: number[]): Promise<TraderProfile[]> {
+    if (!cids.length) return [];
+    const raw = await this.request<{ users: TraderProfile[] }>(
+      `/user-info/people?cidList=${cids.join(',')}`
+    );
+    return raw.users ?? [];
+  }
+
   async closePosition(
     environment: 'demo' | 'real',
     positionId: number,

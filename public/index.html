@@ -48,6 +48,7 @@ async function post(path,body){const r=await fetch(API+path,{method:'POST',heade
 function render(){
   const app=document.getElementById('app');
   Promise.all([get('/api/status'),get('/api/config'),get('/api/sentiment')]).then(([status,config,sentiment])=>{
+    const cur = status.allocator?.currency||'€';
     app.innerHTML=`
       <div style="display:flex;justify-content:space-between;align-items:start">
         <div>
@@ -57,22 +58,29 @@ function render(){
         <span class="badge ${status.status==='ok'?'online':'offline'}">API ${status.status}</span>
       </div>
 
-      <h2>Allocation</h2>
+      <h2>Portfolio</h2>
       <div class="card">
-        ${status.allocator ? traderTable(status.allocator.activeTraders) : '<p class="small">No active allocations</p>'}
-        <div class="row" style="margin-top:0.5rem"><span class="label">Invested</span><span>$${status.allocator?.totalInvested?.toFixed(2)??'0.00'}</span></div>
-        <div class="row"><span class="label">Available Cash</span><span>$${status.allocator?.availableCash?.toFixed(2)??'0.00'}</span></div>
-        <div class="row"><span class="label">Last Rebalance</span><span class="small">${status.allocator?.lastRebalance??'—'}</span></div>
+        ${status.allocator ? `
+        <div class="row"><span class="label">Invested</span><span>${cur}${(status.allocator.totalInvested||0).toFixed(2)}</span></div>
+        <div class="row"><span class="label">Current Value</span><span>${cur}${(status.allocator.currentPortfolioValue||0).toFixed(2)}</span></div>
+        <div class="row"><span class="label">P&amp;L</span><span class="${(status.allocator.totalPnlPercent||0)>=0?'green':'red'}">${(status.allocator.totalPnlPercent||0)>=0?'+':''}${(status.allocator.totalPnlPercent||0).toFixed(2)}%</span></div>
+        <div class="row"><span class="label">Available Cash</span><span>${cur}${(status.allocator.availableCash||0).toFixed(2)}</span></div>
+        <div class="row"><span class="label">Last Rebalance</span><span class="small">${status.allocator.lastRebalance||'—'}</span></div>
+        ` : '<p class="small">No portfolio data</p>'}
+      </div>
+
+      <h2>Active Traders</h2>
+      <div class="card">
+        ${status.allocator ? traderTable(status.allocator.activeTraders, cur) : '<p class="small">No active allocations</p>'}
       </div>
 
       <h2>Market Sentiment</h2>
       <div class="card">
-        <div class="row">
-          <span class="label">Sentiment</span>
-          <span class="badge ${sentiment.label}">${sentiment.label}</span>
-        </div>
+        ${sentiment.articlesAnalyzed>0 ? `
+        <div class="row"><span class="label">Sentiment</span><span class="badge ${sentiment.label}">${sentiment.label}</span></div>
         <div class="row"><span class="label">Score</span><span>${sentiment.score.toFixed(2)}</span></div>
         <div class="row"><span class="label">Articles</span><span>${sentiment.articlesAnalyzed}</span></div>
+        ` : '<p class="small">No news articles fetched. Add NEWS_API_KEY secret to populate sentiment.</p>'}
       </div>
 
       <h2>Configuration</h2>
@@ -99,15 +107,15 @@ function render(){
   });
 }
 
-function traderTable(traders){
+function traderTable(traders, cur='€'){
   if(!traders||traders.length===0)return'<p class="small">No active traders</p>';
   return `<table>
     <tr><th>Trader</th><th>Allocated</th><th>Value</th><th>P&L</th><th>Status</th></tr>
     ${traders.map(t=>`<tr>
-      <td>${t.username}</td>
-      <td>$${(t.allocatedUsd||0).toFixed(2)}</td>
-      <td>$${(t.currentValue||0).toFixed(2)}</td>
-      <td class="${(t.pnlPercent||0)>=0?'green':'red'}">${(t.pnlPercent||0)>=0?'+':''}${(t.pnlPercent||0).toFixed(1)}%</td>
+      <td>${t.traderName||t.username}</td>
+      <td>${cur}${(t.allocated||0).toFixed(2)}</td>
+      <td>${cur}${(t.currentValue||0).toFixed(2)}</td>
+      <td class="${(t.pnlPercent||0)>=0?'green':'red'}">${(t.pnlPercent||0)>=0?'+':''}${(t.pnlPercent||0).toFixed(2)}%</td>
       <td><span class="badge ${t.status==='active'?'online':'offline'}">${t.status||'unknown'}</span></td>
     </tr>`).join('')}
   </table>`;

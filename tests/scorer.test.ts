@@ -10,7 +10,7 @@ const mockMirrors: Mirror[] = [
     stopLossPercentage: 10,
     stopLossAmount: 500,
     initialInvestment: 1000,
-    availableAmount: 200,
+    availableAmount: 1080,
     isPaused: false,
     positions: [
       { instrumentId: 1, symbol: 'AAPL', amount: 500, units: 10, pl: 50, plPercent: 10 },
@@ -24,7 +24,7 @@ const mockMirrors: Mirror[] = [
     stopLossPercentage: 5,
     stopLossAmount: 800,
     initialInvestment: 2000,
-    availableAmount: 500,
+    availableAmount: 2200,
     isPaused: false,
     positions: [
       { instrumentId: 3, symbol: 'TSLA', amount: 1000, units: 20, pl: -100, plPercent: -10 },
