@@ -44,7 +44,21 @@ export class EtoroClient {
   }
 
   async getPortfolio(environment: 'demo' | 'real'): Promise<PortfolioResponse> {
-    return this.request<PortfolioResponse>(`/trading/info/${environment}/pnl`);
+    try {
+      return await this.request<PortfolioResponse>(`/trading/info/${environment}/pnl`);
+    } catch (err) {
+      // If we get a 403 InsufficientPermissions, try the other environment
+      if (err instanceof Error && err.message.includes('403') && err.message.includes('InsufficientPermissions')) {
+        const otherEnv = environment === 'demo' ? 'real' : 'demo';
+        try {
+          return await this.request<PortfolioResponse>(`/trading/info/${otherEnv}/pnl`);
+        } catch (err2) {
+          // If both environments fail, throw the original error
+          throw err;
+        }
+      }
+      throw err;
+    }
   }
 
   async searchTraders(query: string): Promise<TraderProfile[]> {
