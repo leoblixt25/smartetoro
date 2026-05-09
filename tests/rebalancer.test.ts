@@ -5,25 +5,25 @@ import type { Allocation } from '../shared/scorer';
 
 const mockMirrors: Mirror[] = [
   {
-    mirrorID: 1, cid: 100, parentCID: 200,
-    stopLossPercentage: 10, stopLossAmount: 500,
+    mirrorId: 1, cid: 100, parentCid: 200,
+    stopLossPercentage: 10,
     initialInvestment: 1000, availableAmount: 500, isPaused: false,
-    positions: [{ instrumentId: 1, symbol: 'AAPL', amount: 500, units: 10, pl: 50, plPercent: 10 }],
+    positions: [{ amount: 500, pnL: 50, instrumentId: 1 }],
   },
   {
-    mirrorID: 2, cid: 101, parentCID: 201,
-    stopLossPercentage: 5, stopLossAmount: 800,
+    mirrorId: 2, cid: 101, parentCid: 201,
+    stopLossPercentage: 5,
     initialInvestment: 2000, availableAmount: 200, isPaused: false,
     positions: [
-      { instrumentId: 3, symbol: 'TSLA', amount: 1000, units: 20, pl: -300, plPercent: -30 },
-      { instrumentId: 4, symbol: 'MSFT', amount: 500, units: 8, pl: -100, plPercent: -20 },
+      { amount: 1000, pnL: -300, instrumentId: 3 },
+      { amount: 500, pnL: -100, instrumentId: 4 },
     ],
   },
   {
-    mirrorID: 3, cid: 102, parentCID: 202,
-    stopLossPercentage: 8, stopLossAmount: 300,
+    mirrorId: 3, cid: 102, parentCid: 202,
+    stopLossPercentage: 8,
     initialInvestment: 500, availableAmount: 200, isPaused: false,
-    positions: [{ instrumentId: 5, symbol: 'AAPL', amount: 300, units: 5, pl: 150, plPercent: 30 }],
+    positions: [{ amount: 300, pnL: 150, instrumentId: 5 }],
   },
 ];
 

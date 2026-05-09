@@ -39,25 +39,26 @@ export function evaluateTrackers(
   const scores: TrackerScore[] = mirrors.map((m) => {
     const positions = m.positions ?? [];
     const totalAmount = positions.reduce((s, p) => s + (p.amount || 0), 0);
-    const totalPl = positions.reduce((s, p) => s + (p.pl || 0), 0);
+    const totalPnL = positions.reduce((s, p) => s + (p.pnL || 0), 0);
     const cashPortion = m.availableAmount || 0;
-    const currentVal = cashPortion + totalAmount + totalPl;
+    const currentVal = cashPortion + totalAmount + totalPnL;
     const invested = m.initialInvestment || 0;
     const pnlPercent = invested > 0 ? ((currentVal - invested) / invested) * 100 : 0;
 
-    const returns = positions.map((p) => p.plPercent || 0);
+    const returns = positions.map((p) => p.amount > 0 ? ((p.pnL || 0) / p.amount) * 100 : 0);
     const mean = returns.reduce((s, v) => s + v, 0) / returns.length || 0;
     const variance = returns.reduce((s, v) => s + (v - mean) ** 2, 0) / returns.length || 0;
     const stdDev = Math.sqrt(variance);
     const consistencyScore = Math.max(0, 100 - stdDev);
 
-    const riskScore = m.stopLossPercentage > 0
-      ? Math.min(10, m.stopLossPercentage / 2)
+    const slPct = m.stopLossPercentage || 0;
+    const riskScore = slPct > 0
+      ? Math.min(10, slPct / 2)
       : 5;
 
     return {
-      username: `mirror-${m.mirrorID}`,
-      mirrorId: m.mirrorID,
+      username: `mirror-${m.mirrorId}`,
+      mirrorId: m.mirrorId,
       allocatedUsd: totalAmount,
       currentValue: currentVal,
       pnlPercent,

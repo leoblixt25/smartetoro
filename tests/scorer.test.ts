@@ -4,31 +4,29 @@ import type { Mirror } from '../shared/etoro-types';
 
 const mockMirrors: Mirror[] = [
   {
-    mirrorID: 1,
+    mirrorId: 1,
     cid: 100,
-    parentCID: 200,
+    parentCid: 200,
     stopLossPercentage: 10,
-    stopLossAmount: 500,
     initialInvestment: 1000,
     availableAmount: 80,
     isPaused: false,
     positions: [
-      { instrumentId: 1, symbol: 'AAPL', amount: 500, units: 10, pl: 50, plPercent: 10 },
-      { instrumentId: 2, symbol: 'GOOGL', amount: 500, units: 5, pl: 30, plPercent: 6 },
+      { amount: 500, pnL: 50, instrumentId: 1 },
+      { amount: 500, pnL: 30, instrumentId: 2 },
     ],
   },
   {
-    mirrorID: 2,
+    mirrorId: 2,
     cid: 101,
-    parentCID: 201,
+    parentCid: 201,
     stopLossPercentage: 5,
-    stopLossAmount: 800,
     initialInvestment: 2000,
     availableAmount: 300,
     isPaused: false,
     positions: [
-      { instrumentId: 3, symbol: 'TSLA', amount: 1000, units: 20, pl: -100, plPercent: -10 },
-      { instrumentId: 4, symbol: 'MSFT', amount: 1000, units: 15, pl: 200, plPercent: 20 },
+      { amount: 1000, pnL: -100, instrumentId: 3 },
+      { amount: 1000, pnL: 200, instrumentId: 4 },
     ],
   },
 ];

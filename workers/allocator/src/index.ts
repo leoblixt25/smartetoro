@@ -1,5 +1,5 @@
 import { EtoroClient } from '../../../shared/etoro-client';
-import { executeRebalance, buildCloseQueue, calcMirrorCurrentValue, calcMirrorPnl } from '../../../shared/rebalancer';
+import { executeRebalance, buildCloseQueue, calcMirrorCurrentValue, calcMirrorPnL } from '../../../shared/rebalancer';
 import { analyzeSentiment, type SentimentResult } from '../../../shared/sentiment';
 import type { UserPrefs, AllocatorState, AllocationPlan } from '../../../shared/types';
 import type { PortfolioResponse } from '../../../shared/etoro-types';
@@ -44,7 +44,7 @@ async function executeCloses(
   const result: ExecutionResult = { closed: [], errors: [], timestamp: new Date().toISOString() };
   const posByInst = new Map<number, number>();
   for (const p of portfolio.clientPortfolio.positions) {
-    posByInst.set(p.instrumentId, p.positionId);
+    if (p.instrumentId != null && p.positionId != null) posByInst.set(p.instrumentId, p.positionId);
   }
 
   const queueRaw = await env.EDA_CONFIG.get('state:close-queue', 'text');
@@ -52,15 +52,17 @@ async function executeCloses(
   const queue = JSON.parse(queueRaw) as { mirrorId: number; reason: string }[];
 
   for (const item of queue) {
-    const mirror = portfolio.clientPortfolio.mirrors.find(m => m.mirrorID === item.mirrorId);
+    const mirror = portfolio.clientPortfolio.mirrors.find(m => m.mirrorId === item.mirrorId);
     if (!mirror) continue;
 
     let closed = 0;
     for (const mp of mirror.positions) {
-      const pid = mp.positionId ?? posByInst.get(mp.instrumentId);
+      const instId = mp.instrumentId;
+      if (instId == null) continue;
+      const pid = mp.positionId ?? posByInst.get(instId);
       if (!pid) continue;
       try {
-        await client.closePosition(prefs.environment, pid, mp.instrumentId);
+        await client.closePosition(prefs.environment, pid, instId);
         closed++;
       } catch (e) {
         result.errors.push({ mirrorId: item.mirrorId, reason: item.reason, error: String(e) });
@@ -117,15 +119,15 @@ export default {
       const currency = prefs.currency || 'EUR';
       const state: AllocatorState = {
         activeTraders: result.allocations.map((a) => {
-          const mirrorId = parseInt(a.username.replace('mirror-', ''), 10);
-          const mirror = portfolio.clientPortfolio.mirrors.find((m) => m.mirrorID === mirrorId);
+          const mId = parseInt(a.username.replace('mirror-', ''), 10);
+          const mirror = portfolio.clientPortfolio.mirrors.find((m) => m.mirrorId === mId);
           return {
             username: a.username,
-            traderName: a.username,
+            traderName: mirror?.parentUsername || a.username,
             instrumentId: 0,
             allocated: a.usdAmount || 0,
             currentValue: mirror ? calcMirrorCurrentValue(mirror) : 0,
-            pnlPercent: mirror ? calcMirrorPnl(mirror) : 0,
+            pnlPercent: mirror ? calcMirrorPnL(mirror) : 0,
             status: 'active' as const,
           };
         }),

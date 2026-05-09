@@ -1,5 +1,5 @@
 import { EtoroClient } from '../../shared/etoro-client';
-import { executeRebalance, buildCloseQueue, calcMirrorCurrentValue, calcMirrorPnl } from '../../shared/rebalancer';
+import { executeRebalance, buildCloseQueue, calcMirrorCurrentValue, calcMirrorPnL } from '../../shared/rebalancer';
 import { analyzeSentiment } from '../../shared/sentiment';
 import type { UserPrefs, AllocatorState, AllocationPlan } from '../../shared/types';
 
@@ -44,20 +44,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     const mirrors = result.portfolio.clientPortfolio.mirrors;
     const currency = prefs.currency || 'EUR';
 
-    // Resolve trader names from mirror parentCIDs (the PI being copied)
-    const cids = mirrors.map((m) => m.parentCID).filter((c) => c != null);
-    const traderNames: Record<number, string> = {};
-    if (cids.length > 0) {
-      try {
-        const users = await client.lookupUsers(cids);
-        for (const u of users) traderNames[u.cid] = u.username;
-      } catch (e) {
-        console.error('lookupUsers failed:', e);
-      }
-    }
-
-    // Fallback: manual name mapping KV (editable from dashboard)
-    let manualNames: Record<number, string> = {};
+    // Manual name mapping KV (editable from dashboard)
+    let manualNames: Record<string, string> = {};
     try {
       const raw = await context.env.EDA_CONFIG.get('manual:trader-names', 'text');
       if (raw) manualNames = JSON.parse(raw);
@@ -66,14 +54,14 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     const state: AllocatorState = {
       activeTraders: result.allocations.map((a) => {
         const mirrorId = parseInt(a.username.replace('mirror-', ''), 10);
-        const mirror = mirrors.find((m) => m.mirrorID === mirrorId);
+        const mirror = mirrors.find((m) => m.mirrorId === mirrorId);
         return {
           username: a.username,
-          traderName: traderNames[mirror?.parentCID ?? -1] || manualNames[mirrorId] || traderNames[mirror?.cid ?? -1] || a.username,
+          traderName: mirror?.parentUsername || manualNames[String(mirrorId)] || a.username,
           instrumentId: 0,
           allocated: a.usdAmount || 0,
           currentValue: mirror ? calcMirrorCurrentValue(mirror) : 0,
-          pnlPercent: mirror ? calcMirrorPnl(mirror) : 0,
+          pnlPercent: mirror ? calcMirrorPnL(mirror) : 0,
           status: 'active' as const,
         };
       }),
@@ -92,7 +80,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       reason: sentiment ? `manual rebalance (sentiment: ${sentiment.label})` : 'manual rebalance',
     };
 
-    const closeQueue = buildCloseQueue(result.portfolio.clientPortfolio.mirrors, result.allocations, result.riskTriggers);
+    const closeQueue = buildCloseQueue(mirrors, result.allocations, result.riskTriggers);
     await context.env.EDA_CONFIG.put('state:close-queue', JSON.stringify(closeQueue));
     await context.env.EDA_CONFIG.put('state:current', JSON.stringify(state));
     await context.env.EDA_CONFIG.put('state:last-plan', JSON.stringify(plan));
