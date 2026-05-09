@@ -44,15 +44,24 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     const mirrors = result.portfolio.clientPortfolio.mirrors;
     const currency = prefs.currency || 'EUR';
 
-    // Resolve trader names from mirror CIDs
-    const cids = mirrors.map((m) => m.cid).filter(Boolean);
+    // Resolve trader names from mirror parentCIDs (the PI being copied)
+    const cids = mirrors.map((m) => m.parentCID).filter((c) => c != null);
     const traderNames: Record<number, string> = {};
     if (cids.length > 0) {
       try {
         const users = await client.lookupUsers(cids);
         for (const u of users) traderNames[u.cid] = u.username;
-      } catch { /* fallback to mirror-XXXXX */ }
+      } catch (e) {
+        console.error('lookupUsers failed:', e);
+      }
     }
+
+    // Fallback: manual name mapping KV (editable from dashboard)
+    let manualNames: Record<number, string> = {};
+    try {
+      const raw = await context.env.EDA_CONFIG.get('manual:trader-names', 'text');
+      if (raw) manualNames = JSON.parse(raw);
+    } catch { /* ignore */ }
 
     const state: AllocatorState = {
       activeTraders: result.allocations.map((a) => {
@@ -60,7 +69,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         const mirror = mirrors.find((m) => m.mirrorID === mirrorId);
         return {
           username: a.username,
-          traderName: traderNames[mirror?.cid ?? -1] || a.username,
+          traderName: traderNames[mirror?.parentCID ?? -1] || manualNames[mirrorId] || traderNames[mirror?.cid ?? -1] || a.username,
           instrumentId: 0,
           allocated: a.usdAmount || 0,
           currentValue: mirror ? calcMirrorCurrentValue(mirror) : 0,

@@ -105,6 +105,19 @@ function render(){
           <span id="msg" class="small" style="padding:0.5rem"></span>
         </div>
       </div>
+
+      <h2>Trader Names <span class="small">(map mirror IDs to usernames)</span></h2>
+      <div class="card">
+        <div id="names-list"></div>
+        <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
+          <input id="new-mirror-id" type="number" placeholder="Mirror ID (e.g. 15045979)" style="flex:1">
+          <input id="new-username" type="text" placeholder="Username (e.g. booker03)" style="flex:1">
+          <button onclick="addNameMapping()">Add</button>
+        </div>
+        <div class="actions">
+          <button onclick="saveNameMappings()">Save Name Mappings</button>
+        </div>
+      </div>
     `;
   }).catch(e=>{
     app.innerHTML=`<div class="card"><p style="color:#ef4444">Failed to load: ${e.message}</p></div>`;
@@ -155,6 +168,55 @@ async function triggerRebalance(){
   } catch(e){msg('Rebalance failed: '+(e.message||e),false)}
 }
 
+let nameMappings = {};
+
+async function loadNameMappings(){
+  try {
+    nameMappings = await get('/api/trader-names');
+    renderNameMappings();
+  } catch(e){ /* ignore */ }
+}
+
+function renderNameMappings(){
+  const el = document.getElementById('names-list');
+  if(!el)return;
+  const entries = Object.entries(nameMappings);
+  if(entries.length===0){
+    el.innerHTML = '<p class="small">No name mappings yet. Add mirror ID → username pairs below.</p>';
+    return;
+  }
+  el.innerHTML = entries.map(([id,name]) =>
+    `<div class="row"><span style="font-family:monospace">mirror-${id}</span><span>→</span><span>${name} <span class="small" onclick="removeNameMapping('${id}')" style="cursor:pointer;color:#ef4444">[x]</span></span></div>`
+  ).join('');
+}
+
+function addNameMapping(){
+  const idEl = document.getElementById('new-mirror-id');
+  const nameEl = document.getElementById('new-username');
+  const id = idEl.value.trim();
+  const name = nameEl.value.trim();
+  if(!id||!name)return msg('Enter both mirror ID and username',false);
+  nameMappings[id] = name;
+  idEl.value = '';
+  nameEl.value = '';
+  renderNameMappings();
+}
+
+function removeNameMapping(id){
+  delete nameMappings[id];
+  renderNameMappings();
+}
+
+async function saveNameMappings(){
+  try {
+    const entries = Object.fromEntries(Object.entries(nameMappings).filter(([k,v])=>k&&v));
+    await post('/api/trader-names', entries);
+    msg('Name mappings saved');
+    setTimeout(render,500);
+  } catch(e){msg('Save failed: '+(e.message||e),false)}
+}
+
+loadNameMappings();
 render();
 </script>
 </body>
