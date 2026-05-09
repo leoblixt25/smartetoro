@@ -1,5 +1,5 @@
 import { EtoroClient } from '../../../shared/etoro-client';
-import { executeRebalance, buildCloseQueue } from '../../../shared/rebalancer';
+import { executeRebalance, buildCloseQueue, calcMirrorCurrentValue, calcMirrorPnl } from '../../../shared/rebalancer';
 import { analyzeSentiment, type SentimentResult } from '../../../shared/sentiment';
 import type { UserPrefs, AllocatorState, AllocationPlan } from '../../../shared/types';
 import type { PortfolioResponse } from '../../../shared/etoro-types';
@@ -124,8 +124,8 @@ export default {
             traderName: a.username,
             instrumentId: 0,
             allocated: a.usdAmount || 0,
-            currentValue: mirror?.availableAmount || 0,
-            pnlPercent: mirror && mirror.initialInvestment > 0 ? ((mirror.availableAmount - mirror.initialInvestment) / mirror.initialInvestment) * 100 : 0,
+            currentValue: mirror ? calcMirrorCurrentValue(mirror) : 0,
+            pnlPercent: mirror ? calcMirrorPnl(mirror) : 0,
             status: 'active' as const,
           };
         }),

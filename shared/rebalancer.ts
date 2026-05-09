@@ -46,8 +46,8 @@ export async function executeRebalance(
   const mirrors = portfolio.clientPortfolio.mirrors;
   const availableCash = portfolio.clientPortfolio.credit;
 
-  const totalInvested = mirrors.reduce((s, m) => s + (m.initialInvestment || 0), 0);
-  const currentPortfolioValue = mirrors.reduce((s, m) => s + (m.availableAmount || 0), 0);
+  const totalInvested = mirrors.reduce((s, m) => s + calcMirrorInvested(m), 0);
+  const currentPortfolioValue = mirrors.reduce((s, m) => s + calcMirrorCurrentValue(m), 0);
   const rawCapital = currentPortfolioValue + availableCash;
   const multiplier = sentiment ? capitalMultiplier(sentiment) : 1.0;
   const totalCapital = Math.floor(rawCapital * multiplier * 100) / 100;
@@ -103,11 +103,23 @@ export function checkRiskTriggers(mirrors: Mirror[], prefs: UserPrefs): RiskTrig
   return triggers;
 }
 
-function calcMirrorPnl(mirror: Mirror): number {
-  const initialInv = mirror?.initialInvestment || 0;
-  const currentVal = mirror?.availableAmount || 0;
-  if (initialInv <= 0) return 0;
-  return ((currentVal - initialInv) / initialInv) * 100;
+export function calcMirrorPnl(mirror: Mirror): number {
+  const positions = mirror?.positions ?? [];
+  const totalAmount = positions.reduce((s, p) => s + (p.amount || 0), 0);
+  const totalPl = positions.reduce((s, p) => s + (p.pl || 0), 0);
+  if (totalAmount <= 0) return 0;
+  return (totalPl / totalAmount) * 100;
+}
+
+export function calcMirrorCurrentValue(mirror: Mirror): number {
+  const positions = mirror?.positions ?? [];
+  const totalAmount = positions.reduce((s, p) => s + (p.amount || 0), 0);
+  const totalPl = positions.reduce((s, p) => s + (p.pl || 0), 0);
+  return totalAmount + totalPl;
+}
+
+export function calcMirrorInvested(mirror: Mirror): number {
+  return mirror?.initialInvestment || 0;
 }
 
 export function computeActions(

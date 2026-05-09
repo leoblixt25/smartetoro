@@ -45,10 +45,14 @@ const API = '';
 async function get(path){const r=await fetch(API+path);if(!r.ok)throw await r.text();return r.json()}
 async function post(path,body){const r=await fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw await r.text();return r.json()}
 
+function fmt(n, cur='EUR'){
+  return new Intl.NumberFormat('en-US',{style:'currency',currency:cur,minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0);
+}
+
 function render(){
   const app=document.getElementById('app');
   Promise.all([get('/api/status'),get('/api/config'),get('/api/sentiment')]).then(([status,config,sentiment])=>{
-    const cur = status.allocator?.currency||'€';
+    const cur = status.allocator?.currency||'EUR';
     app.innerHTML=`
       <div style="display:flex;justify-content:space-between;align-items:start">
         <div>
@@ -61,10 +65,10 @@ function render(){
       <h2>Portfolio</h2>
       <div class="card">
         ${status.allocator ? `
-        <div class="row"><span class="label">Invested</span><span>${cur}${(status.allocator.totalInvested||0).toFixed(2)}</span></div>
-        <div class="row"><span class="label">Current Value</span><span>${cur}${(status.allocator.currentPortfolioValue||0).toFixed(2)}</span></div>
+        <div class="row"><span class="label">Invested</span><span>${fmt(status.allocator.totalInvested, cur)}</span></div>
+        <div class="row"><span class="label">Current Value</span><span>${fmt(status.allocator.currentPortfolioValue, cur)}</span></div>
         <div class="row"><span class="label">P&amp;L</span><span class="${(status.allocator.totalPnlPercent||0)>=0?'green':'red'}">${(status.allocator.totalPnlPercent||0)>=0?'+':''}${(status.allocator.totalPnlPercent||0).toFixed(2)}%</span></div>
-        <div class="row"><span class="label">Available Cash</span><span>${cur}${(status.allocator.availableCash||0).toFixed(2)}</span></div>
+        <div class="row"><span class="label">Available Cash</span><span>${fmt(status.allocator.availableCash, cur)}</span></div>
         <div class="row"><span class="label">Last Rebalance</span><span class="small">${status.allocator.lastRebalance||'—'}</span></div>
         ` : '<p class="small">No portfolio data</p>'}
       </div>
@@ -107,14 +111,14 @@ function render(){
   });
 }
 
-function traderTable(traders, cur='€'){
+function traderTable(traders, cur='EUR'){
   if(!traders||traders.length===0)return'<p class="small">No active traders</p>';
   return `<table>
     <tr><th>Trader</th><th>Allocated</th><th>Value</th><th>P&L</th><th>Status</th></tr>
     ${traders.map(t=>`<tr>
       <td>${t.traderName||t.username}</td>
-      <td>${cur}${(t.allocated||0).toFixed(2)}</td>
-      <td>${cur}${(t.currentValue||0).toFixed(2)}</td>
+      <td>${fmt(t.allocated, cur)}</td>
+      <td>${fmt(t.currentValue, cur)}</td>
       <td class="${(t.pnlPercent||0)>=0?'green':'red'}">${(t.pnlPercent||0)>=0?'+':''}${(t.pnlPercent||0).toFixed(2)}%</td>
       <td><span class="badge ${t.status==='active'?'online':'offline'}">${t.status||'unknown'}</span></td>
     </tr>`).join('')}
