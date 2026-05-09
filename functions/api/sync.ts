@@ -72,7 +72,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       },
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Sync failed';
+    let msg = err instanceof Error ? err.message : 'Sync failed';
+    if (msg.includes('InsufficientPermissions') || msg.includes('403')) {
+      msg += '. Your API keys may be for a different environment (demo vs real). Check the Environment dropdown in config below.';
+    }
     return Response.json({ status: 'error', version: '0.1.0', error: msg }, { status: 502 });
   }
 };
